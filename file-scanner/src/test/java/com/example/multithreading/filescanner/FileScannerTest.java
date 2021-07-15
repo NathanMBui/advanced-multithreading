@@ -14,6 +14,12 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FileScannerTest {
 
     @Test
+    public void testEmpty(@TempDir Path path) throws IOException {
+        int fileCount = FileScanner.countFile(path);
+        assertEquals(0, fileCount);
+    }
+
+    @Test
     public void testCountOneFile(@TempDir Path path) throws IOException {
         Files.createFile(path.resolve("file1"));
         int fileCount = FileScanner.countFile(path);
@@ -49,7 +55,7 @@ public class FileScannerTest {
 
 
     @Test
-    public void testSumFileSizeEmptyFolder(@TempDir Path path) throws IOException, ExecutionException, InterruptedException {
+    public void testSumFileSizeEmptyFolder(@TempDir Path path) throws ExecutionException, InterruptedException {
         Future<Long> sumSizeFuture = FileScanner.sumSizeFuture(path);
         assertNotNull(sumSizeFuture);
         long size = sumSizeFuture.get();
@@ -80,6 +86,6 @@ public class FileScannerTest {
         Future<Long> sumSizeFuture = FileScanner.sumSizeFuture(path);
         assertNotNull(sumSizeFuture);
         long size = sumSizeFuture.get();
-        assertEquals(size, size1 + size2);
+        assertEquals(size1 + size2, size);
     }
 }
