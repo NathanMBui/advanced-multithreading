@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 
 public class FileScanner {
 
-    private static ExecutorService executor = Executors.newCachedThreadPool();
+    private static final ForkJoinPool fjp = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
     public static int countFile(Path path) throws IOException {
         return (int) Files.list(path).filter(Files::isRegularFile).count();
@@ -17,24 +17,46 @@ public class FileScanner {
         return (int) Files.list(path).filter(Files::isDirectory).count();
     }
 
-    public static Future<Long> sumSizeFuture(Path path) throws IOException {
-        int fileCount = (int) Files.list(path).count();
-        if (fileCount == 0) {
-            return CompletableFuture.completedFuture(0L);
+    public static Future<Long> sumSizeFuture(Path path) {
+        return fjp.submit(new SumSizeFolderTask(path));
+    }
+
+    private static class SumSizeFolderTask extends RecursiveTask<Long> {
+
+        private final Path path;
+
+        public SumSizeFolderTask(Path folder) {
+            this.path = folder;
         }
-        return executor.submit(() -> (long) Files.list(path).map(p -> {
-            long size = 0;
+
+        @Override
+        protected Long compute() {
+            long sum;
             try {
-                if (Files.isRegularFile(p)) {
-                    size = Files.size(p);
-                } else {
-                    size = sumSizeFuture(p).get();
+                int fileCount = (int) Files.list(path).count();
+                if (fileCount == 0) {
+                    return 0L;
                 }
-            } catch (IOException | InterruptedException | ExecutionException e) {
+                sum = Files.list(path).map(p -> {
+                    long size;
+                    try {
+                        if (Files.isRegularFile(p)) {
+                            size = Files.size(p);
+                        } else {
+                            size = fjp.invoke(new SumSizeFolderTask(p));
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        size = 0;
+                    }
+                    return size;
+                }).reduce(0L, Long::sum);
+
+            } catch (IOException e) {
                 e.printStackTrace();
-                size = -1;
+                return 0L;
             }
-            return size;
-        }).reduce(0L, Long::sum));
+            return sum;
+        }
     }
 }
