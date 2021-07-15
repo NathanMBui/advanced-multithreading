@@ -65,4 +65,21 @@ public class FileScannerTest {
         long size = sumSizeFuture.get();
         assertTrue(size > 0);
     }
+
+    @Test
+    public void testSumFileSizeSubFolder(@TempDir Path path) throws IOException, ExecutionException, InterruptedException {
+        Path p1 = Files.createFile(path.resolve("file1"));
+        Files.writeString(p1, "test");
+        long size1 = Files.size(p1);
+
+        Path subFolder = Files.createDirectory(path.resolve("sub"));
+        Path p2 = Files.createFile(subFolder.resolve("file2"));
+        Files.writeString(p2, "test2");
+        long size2 = Files.size(p2);
+
+        Future<Long> sumSizeFuture = FileScanner.sumSizeFuture(path);
+        assertNotNull(sumSizeFuture);
+        long size = sumSizeFuture.get();
+        assertEquals(size, size1 + size2);
+    }
 }

@@ -3,36 +3,38 @@ package com.example.multithreading.filescanner;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Spliterator;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.util.concurrent.*;
 
 public class FileScanner {
+
+    private static ExecutorService executor = Executors.newCachedThreadPool();
+
     public static int countFile(Path path) throws IOException {
-        List<Path> allChildren = Files.list(path).collect(Collectors.toList());
-        return (int) allChildren.stream().filter(Files::isRegularFile).count();
+        return (int) Files.list(path).filter(Files::isRegularFile).count();
     }
 
     public static int countFolder(Path path) throws IOException {
-        List<Path> allChildren = Files.list(path).collect(Collectors.toList());
-        return (int) allChildren.stream().filter(Files::isDirectory).count();
+        return (int) Files.list(path).filter(Files::isDirectory).count();
     }
 
     public static Future<Long> sumSizeFuture(Path path) throws IOException {
-        long sum = Files.list(path).map(path1 -> {
-            long size;
+        int fileCount = (int) Files.list(path).count();
+        if (fileCount == 0) {
+            return CompletableFuture.completedFuture(0L);
+        }
+        return executor.submit(() -> (long) Files.list(path).map(p -> {
+            long size = 0;
             try {
-                size = Files.size(path1);
-            } catch (IOException e) {
+                if (Files.isRegularFile(p)) {
+                    size = Files.size(p);
+                } else {
+                    size = sumSizeFuture(p).get();
+                }
+            } catch (IOException | InterruptedException | ExecutionException e) {
                 e.printStackTrace();
-                size = 0;
+                size = -1;
             }
             return size;
-        }).reduce(0L, Long::sum);
-        return CompletableFuture.completedFuture(sum);
+        }).reduce(0L, Long::sum));
     }
 }
