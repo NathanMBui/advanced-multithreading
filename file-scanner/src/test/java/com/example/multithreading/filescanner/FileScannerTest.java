@@ -1,18 +1,15 @@
 package com.example.multithreading.filescanner;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class FileScannerTest {
 
@@ -52,10 +49,17 @@ public class FileScannerTest {
 
 
     @Test
+    public void testSumFileSizeEmptyFolder(@TempDir Path path) throws IOException, ExecutionException, InterruptedException {
+        Future<Long> sumSizeFuture = FileScanner.sumSizeFuture(path);
+        assertNotNull(sumSizeFuture);
+        long size = sumSizeFuture.get();
+        assertEquals(0, size);
+    }
+
+    @Test
     public void testSumFileSize(@TempDir Path path) throws IOException, ExecutionException, InterruptedException {
-        Files.createFile(path.resolve("file1"));
-        Files.createFile(path.resolve("file2"));
-        Files.createFile(path.resolve("file3"));
+        Path p1 = Files.createFile(path.resolve("file1"));
+        Files.writeString(p1, "test");
         Future<Long> sumSizeFuture = FileScanner.sumSizeFuture(path);
         assertNotNull(sumSizeFuture);
         long size = sumSizeFuture.get();

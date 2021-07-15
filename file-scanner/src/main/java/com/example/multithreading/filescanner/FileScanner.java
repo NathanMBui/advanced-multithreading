@@ -22,7 +22,17 @@ public class FileScanner {
         return (int) allChildren.stream().filter(Files::isDirectory).count();
     }
 
-    public static Future<Long> sumSizeFuture(Path path) {
-        return CompletableFuture.completedFuture(1L);
+    public static Future<Long> sumSizeFuture(Path path) throws IOException {
+        long sum = Files.list(path).map(path1 -> {
+            long size;
+            try {
+                size = Files.size(path1);
+            } catch (IOException e) {
+                e.printStackTrace();
+                size = 0;
+            }
+            return size;
+        }).reduce(0L, Long::sum);
+        return CompletableFuture.completedFuture(sum);
     }
 }
