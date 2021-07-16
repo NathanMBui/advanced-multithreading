@@ -1,18 +1,15 @@
 package com.example.multithreading.filescanner;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.file.Path;
-import java.sql.SQLOutput;
 import java.util.Scanner;
 import java.util.concurrent.*;
 
 public class Launcher {
 
-    private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private static final ExecutorService executorService = Executors.newCachedThreadPool();
     private static boolean calculating = true;
-    private static Scanner in = new Scanner(System.in);
+    private static final Scanner in = new Scanner(System.in);
 
     public static void main(String[] args) throws ExecutionException, InterruptedException, IOException {
         Path path = Path.of(inputPath());
@@ -28,7 +25,7 @@ public class Launcher {
                 try {
                     Thread.sleep(500L);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    //e.printStackTrace();
                 }
             }
         });
@@ -36,7 +33,7 @@ public class Launcher {
 
     private static void stopProgress() {
         calculating = false;
-        executorService.shutdown();
+        executorService.shutdownNow();
     }
 
     private static String inputPath() {
@@ -64,8 +61,22 @@ public class Launcher {
             case 2 -> System.out.println("Folder count: " + FileScanner.countFolder(path));
             case 3 -> {
                 showProgress();
-                System.out.println("Sum size: " + FileScanner.sumSizeFuture(path).get());
-                stopProgress();
+                Future<Long> future = FileScanner.sumSizeFuture(path);
+                executorService.submit(() -> {
+                    System.out.println("Enter \"c\" to cancel");
+                    String c = in.nextLine();
+                    System.out.println("c=" + c);
+                    if(c.contains("c")) {
+                        future.cancel(true);
+                    }
+                });
+                try {
+                    System.out.println("Sum size: " + future.get());
+                } catch (CancellationException ex) {
+                    System.out.println("Task was cancelled");
+                } finally {
+                    stopProgress();
+                }
             }
             default -> System.out.println("invalid command");
         }
